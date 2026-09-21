@@ -35,10 +35,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      # package-lock.json в учебном проекте пока не хранится,
-      # поэтому используем npm install. После фиксации lock-файла
-      # эту команду можно заменить на npm ci.
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run build
 
