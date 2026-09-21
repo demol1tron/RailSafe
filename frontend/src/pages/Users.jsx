@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {api, errorText} from '../api/client';
 import {ROLE_LABELS, USER_ROLE_VALUES, roleCodeFromInput, roleLabel} from '../utils/labels';
+import {normalizeRussianPhone} from '../utils/phone';
 
 export default function Users() {
   const queryClient = useQueryClient();
@@ -28,9 +29,17 @@ export default function Users() {
     const fullName = validateName(form.full_name);
     if (!fullName) return;
 
+    let phone;
+    try {
+      phone = normalizeRussianPhone(form.phone);
+    } catch (err) {
+      setError(err.message);
+      return;
+    }
+
     try {
       setError('');
-      await api.post('/users', {...form, full_name: fullName});
+      await api.post('/users', {...form, full_name: fullName, phone});
       setForm(null);
       queryClient.invalidateQueries({queryKey: ['users']});
     } catch (err) {
@@ -131,7 +140,7 @@ export default function Users() {
           <input type="password" minLength="8" required value={form.password} onChange={(event) => setForm({...form, password: event.target.value})} />
         </label>
         <label>Телефон
-          <input value={form.phone} onChange={(event) => setForm({...form, phone: event.target.value})} />
+          <input type="tel" placeholder="+7 913 123-45-67" value={form.phone} onChange={(event) => setForm({...form, phone: event.target.value})} />
         </label>
         <label>Роль
           <select value={form.role} onChange={(event) => setForm({...form, role: event.target.value})}>

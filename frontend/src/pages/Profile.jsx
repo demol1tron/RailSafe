@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {api, errorText} from '../api/client';
 import {useAuth} from '../contexts/AuthContext';
 import {roleLabel} from '../utils/labels';
+import {normalizeRussianPhone} from '../utils/phone';
 
 export default function Profile() {
   const {user, setUser} = useAuth();
@@ -16,8 +17,15 @@ export default function Profile() {
       setMessage('Введите ФИО');
       return;
     }
+    let phone;
     try {
-      const response = await api.put('/profile', {...form, full_name: fullName, phone: form.phone || null});
+      phone = normalizeRussianPhone(form.phone);
+    } catch (err) {
+      setMessage(err.message);
+      return;
+    }
+    try {
+      const response = await api.put('/profile', {...form, full_name: fullName, phone});
       setUser(response.data);
       setForm({full_name: response.data.full_name, phone: response.data.phone || ''});
       setMessage('Профиль сохранён');
@@ -47,7 +55,7 @@ export default function Profile() {
           <input required minLength="2" maxLength="255" value={form.full_name} onChange={(event) => setForm({...form, full_name: event.target.value})} />
         </label>
         <label>Телефон
-          <input value={form.phone} onChange={(event) => setForm({...form, phone: event.target.value})} />
+          <input type="tel" placeholder="+7 913 123-45-67" value={form.phone} onChange={(event) => setForm({...form, phone: event.target.value})} />
         </label>
         <button>Сохранить</button>
       </form>

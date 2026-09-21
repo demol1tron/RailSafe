@@ -7,7 +7,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password
 from app.models.entities import RefreshToken, User
-from app.schemas.common import UserOut, _normalize_full_name
+from app.schemas.common import UserOut, _normalize_full_name, _normalize_phone
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -22,6 +22,11 @@ class ProfileUpdate(BaseModel):
         if value is None:
             return None
         return _normalize_full_name(value)
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str | None) -> str | None:
+        return _normalize_phone(value)
 
 
 class PasswordChange(BaseModel):

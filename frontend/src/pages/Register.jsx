@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {useAuth} from '../contexts/AuthContext';
 import {errorText} from '../api/client';
+import {normalizeRussianPhone} from '../utils/phone';
 
 export default function Register() {
   const {register} = useAuth();
@@ -16,6 +17,13 @@ export default function Register() {
       setError('Введите ФИО');
       return;
     }
+    let phone;
+    try {
+      phone = normalizeRussianPhone(form.phone);
+    } catch (err) {
+      setError(err.message);
+      return;
+    }
     if (form.password !== form.repeat) {
       setError('Пароли не совпадают');
       return;
@@ -25,7 +33,7 @@ export default function Register() {
         email: form.email,
         password: form.password,
         full_name: fullName,
-        phone: form.phone || null,
+        phone,
       });
       nav('/login');
     } catch (err) {
@@ -44,7 +52,7 @@ export default function Register() {
         <input type="email" required value={form.email} onChange={(event) => setForm({...form, email: event.target.value})} />
       </label>
       <label>Телефон
-        <input value={form.phone} onChange={(event) => setForm({...form, phone: event.target.value})} />
+        <input type="tel" placeholder="+7 913 123-45-67" value={form.phone} onChange={(event) => setForm({...form, phone: event.target.value})} />
       </label>
       <label>Пароль
         <input type="password" minLength="8" required value={form.password} onChange={(event) => setForm({...form, password: event.target.value})} />

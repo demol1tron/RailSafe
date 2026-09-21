@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -22,6 +23,32 @@ def _normalize_full_name(value: str) -> str:
     if len(value) > 255:
         raise ValueError("ФИО не должно превышать 255 символов")
     return value
+
+
+def _normalize_phone(value: str | None) -> str | None:
+    if value is None or not value.strip():
+        return None
+
+    value = value.strip()
+    if not re.fullmatch(r"\+?[\d\s()\-]+", value):
+        raise ValueError("Телефон может содержать только цифры, пробелы, скобки, дефисы и знак +")
+
+    if value.startswith("+") and not value.startswith("+7"):
+        raise ValueError("Для российских номеров код страны должен быть +7")
+
+    digits = re.sub(r"\D", "", value)
+
+    if len(digits) == 10:
+        national = digits
+    elif len(digits) == 11 and digits[0] in {"7", "8"}:
+        national = digits[1:]
+    else:
+        raise ValueError("Введите российский номер из 10 цифр, например +7 913 123-45-67")
+
+    if national[0] not in "3456789":
+        raise ValueError("Некорректный российский номер телефона")
+
+    return "+7" + national
 
 
 class ORMModel(BaseModel):
@@ -54,6 +81,11 @@ class RegisterIn(BaseModel):
     def validate_full_name(cls, value: str) -> str:
         return _normalize_full_name(value)
 
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str | None) -> str | None:
+        return _normalize_phone(value)
+
 
 class LoginIn(BaseModel):
     email: str = Field(min_length=3, max_length=255)
@@ -85,6 +117,11 @@ class UserUpdate(BaseModel):
         if value is None:
             return None
         return _normalize_full_name(value)
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str | None) -> str | None:
+        return _normalize_phone(value)
 
 
 class UserStatusUpdate(BaseModel):
