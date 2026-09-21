@@ -15,6 +15,14 @@ def _normalize_email(value: str) -> str:
         raise ValueError("Некорректный email")
     return value
 
+def _normalize_full_name(value: str) -> str:
+    value = " ".join(value.split())
+    if len(value) < 2:
+        raise ValueError("Введите ФИО")
+    if len(value) > 255:
+        raise ValueError("ФИО не должно превышать 255 символов")
+    return value
+
 
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -41,6 +49,11 @@ class RegisterIn(BaseModel):
     def validate_email(cls, value: str) -> str:
         return _normalize_email(value)
 
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value: str) -> str:
+        return _normalize_full_name(value)
+
 
 class LoginIn(BaseModel):
     email: str = Field(min_length=3, max_length=255)
@@ -62,9 +75,20 @@ class UserCreate(RegisterIn):
 
 
 class UserUpdate(BaseModel):
-    full_name: str | None = None
-    phone: str | None = None
+    full_name: str | None = Field(default=None, min_length=2, max_length=255)
+    phone: str | None = Field(default=None, max_length=32)
     role: UserRole | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return _normalize_full_name(value)
+
+
+class UserStatusUpdate(BaseModel):
+    is_active: bool
 
 
 class StationIn(BaseModel):
