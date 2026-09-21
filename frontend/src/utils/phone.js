@@ -2,7 +2,7 @@ export function normalizeRussianPhone(value) {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
-  if (!/^\+?[\d\s()\-]+$/.test(trimmed)) {
+  if (!/^\+?[\d\s()-]+$/.test(trimmed)) {
     throw new Error('Телефон может содержать только цифры, пробелы, скобки, дефисы и знак +');
   }
 
