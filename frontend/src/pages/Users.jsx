@@ -146,10 +146,11 @@ export default function Users() {
     </form>}
 
     <div className="table-wrap"><table>
-      <thead><tr><th>ФИО</th><th>Email</th><th>Роль</th><th>Статус</th><th>Регистрация</th><th /></tr></thead>
+      <thead><tr><th>ФИО</th><th>Email</th><th>Телефон</th><th>Роль</th><th>Статус</th><th>Регистрация</th><th /></tr></thead>
       <tbody>{query.data?.map((user) => <tr key={user.id}>
         <td>{user.full_name}</td>
         <td>{user.email}</td>
+        <td>{user.phone || '—'}</td>
         <td>{roleLabel(user.role)}</td>
         <td>{user.is_active ? 'Активен' : 'Заблокирован'}</td>
         <td>{new Date(user.created_at).toLocaleDateString('ru-RU')}</td>
