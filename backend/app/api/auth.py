@@ -104,7 +104,7 @@ async def login(
 
     _set_audit_actor(request, user)
 
-    if not settings.two_factor_enabled:
+    if not settings.two_factor_enabled or user.role == UserRole.ADMIN:
         token = await _issue_session(user, request, response, db)
         return LoginOut(access_token=token.access_token)
 
