@@ -1,6 +1,28 @@
 {
-  "name":"railsafe-frontend","private":true,"version":"1.0.0","type":"module",
-  "scripts":{"dev":"vite --host 0.0.0.0","build":"vite build","lint":"eslint src --ext js,jsx"},
-  "dependencies":{"@tanstack/react-query":"5.103.1","axios":"^1.7.9","maplibre-gl":"^4.7.1","react":"^18.3.1","react-dom":"^18.3.1","react-router-dom":"^7.1.1"},
-  "devDependencies":{"@eslint/js":"^9.17.0","@vitejs/plugin-react":"^4.3.4","eslint":"^9.17.0","eslint-plugin-react-hooks":"^5.0.0","eslint-plugin-react-refresh":"^0.4.16","globals":"^15.14.0","vite":"^6.0.5"}
+  "name": "railsafe-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "lint": "eslint src --ext js,jsx"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.103.1",
+    "axios": "1.7.9",
+    "maplibre-gl": "4.7.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "7.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.17.0",
+    "@vitejs/plugin-react": "4.3.4",
+    "eslint": "9.17.0",
+    "eslint-plugin-react-hooks": "5.0.0",
+    "eslint-plugin-react-refresh": "0.4.16",
+    "globals": "15.14.0",
+    "vite": "6.0.5"
+  }
 }

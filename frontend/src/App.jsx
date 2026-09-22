@@ -11,6 +11,7 @@ import IncidentDetail from './pages/IncidentDetail';
 import IncidentEdit from './pages/IncidentEdit';
 import ReferencePage from './pages/ReferencePage';
 import Users from './pages/Users';
+import Logs from './pages/Logs';
 import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
@@ -32,6 +33,7 @@ export default function App() {
       <Route path="/stations" element={<ReferencePage type="stations" />} />
       <Route path="/categories" element={<ReferencePage type="categories" />} />
       <Route path="/users" element={<P roles={['ADMIN']}><Users /></P>} />
+      <Route path="/logs" element={<P roles={['ADMIN']}><Logs /></P>} />
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/profile" element={<Profile />} />
     </Route>

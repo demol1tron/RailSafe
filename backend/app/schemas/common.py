@@ -102,6 +102,19 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
 
 
+class LoginOut(BaseModel):
+    requires_2fa: bool = False
+    access_token: str | None = None
+    token_type: str = "bearer"
+    challenge_id: UUID | None = None
+    expires_in: int | None = None
+
+
+class TwoFactorVerifyIn(BaseModel):
+    challenge_id: UUID
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
 class UserCreate(RegisterIn):
     role: UserRole
 
@@ -252,3 +265,24 @@ class NotificationOut(ORMModel):
     message: str
     is_read: bool
     created_at: datetime
+
+
+class AuditLogOut(ORMModel):
+    id: UUID
+    actor_id: UUID | None
+    actor_email: str | None
+    action: str
+    method: str
+    path: str
+    query_string: str | None
+    status_code: int
+    ip_address: str | None
+    user_agent: str | None
+    created_at: datetime
+
+
+class AuditLogListOut(BaseModel):
+    items: list[AuditLogOut]
+    total: int
+    page: int
+    size: int
