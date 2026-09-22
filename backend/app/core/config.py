@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     two_factor_secret: str = "change-me-two-factor-secret"
     two_factor_ttl_seconds: int = 300
     two_factor_max_attempts: int = 5
+    password_reset_ttl_seconds: int = 600
 
     smtp_host: str = ""
     smtp_port: int = 587

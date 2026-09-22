@@ -87,13 +87,27 @@ export default function Users() {
     const fullName = validateName(fullNameInput);
     if (!fullName) return;
 
-    const allowed = USER_ROLE_VALUES.map((value) => ROLE_LABELS[value]).join(' / ');
-    const roleInput = window.prompt(`Роль: ${allowed}`, roleLabel(user.role));
-    if (roleInput === null) return;
-    const role = roleCodeFromInput(roleInput);
-    if (!role || !USER_ROLE_VALUES.includes(role)) {
-      setError(`Допустимые роли: ${allowed}`);
+    const phoneInput = window.prompt('Телефон', user.phone || '');
+    if (phoneInput === null) return;
+
+    let phone;
+    try {
+      phone = normalizeRussianPhone(phoneInput);
+    } catch (err) {
+      setError(err.message);
       return;
+    }
+
+    let role = user.role;
+    if (user.role !== 'ADMIN') {
+      const allowed = USER_ROLE_VALUES.map((value) => ROLE_LABELS[value]).join(' / ');
+      const roleInput = window.prompt(`Роль: ${allowed}`, roleLabel(user.role));
+      if (roleInput === null) return;
+      role = roleCodeFromInput(roleInput);
+      if (!role || !USER_ROLE_VALUES.includes(role)) {
+        setError(`Допустимые роли: ${allowed}`);
+        return;
+      }
     }
 
     try {
@@ -102,7 +116,7 @@ export default function Users() {
       await api.put(`/users/${user.id}`, {
         full_name: fullName,
         role,
-        phone: user.phone,
+        phone,
       });
       queryClient.invalidateQueries({queryKey: ['users']});
     } catch (err) {

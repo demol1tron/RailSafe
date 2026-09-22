@@ -147,6 +147,7 @@ class TwoFactorChallenge(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(32), default="LOGIN_2FA", nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -156,6 +157,7 @@ class TwoFactorChallenge(Base):
     __table_args__ = (
         Index("ix_two_factor_user_id", "user_id"),
         Index("ix_two_factor_expires_at", "expires_at"),
+        Index("ix_two_factor_user_purpose", "user_id", "purpose"),
     )
 
 

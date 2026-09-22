@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.mailer import send_2fa_code
+from app.core.mailer import send_2fa_code, send_password_reset_code
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -22,10 +22,22 @@ from app.core.security import (
 )
 from app.core.two_factor import generate_otp, hash_otp, verify_otp
 from app.models.entities import RefreshToken, TwoFactorChallenge, User, UserRole
-from app.schemas.common import LoginIn, LoginOut, RegisterIn, TokenOut, TwoFactorVerifyIn, UserOut
+from app.schemas.common import (
+    ForgotPasswordIn,
+    LoginIn,
+    LoginOut,
+    MessageOut,
+    RegisterIn,
+    ResetPasswordIn,
+    TokenOut,
+    TwoFactorVerifyIn,
+    UserOut,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 COOKIE_NAME = "railsafe_refresh"
+LOGIN_2FA_PURPOSE = "LOGIN_2FA"
+PASSWORD_RESET_PURPOSE = "PASSWORD_RESET"
 logger = logging.getLogger(__name__)
 
 
@@ -104,6 +116,8 @@ async def login(
 
     _set_audit_actor(request, user)
 
+    # Администратор входит без второго фактора. Для остальных ролей 2FA
+    # применяется, когда TWO_FACTOR_ENABLED=true.
     if not settings.two_factor_enabled or user.role == UserRole.ADMIN:
         token = await _issue_session(user, request, response, db)
         return LoginOut(access_token=token.access_token)
@@ -112,11 +126,13 @@ async def login(
     code = generate_otp()
     now = datetime.now(timezone.utc)
 
-    # Previous unused codes become invalid as soon as a new login starts.
+    # Новый код входа инвалидирует только предыдущие коды входа,
+    # но не коды восстановления пароля.
     await db.execute(
         update(TwoFactorChallenge)
         .where(
             TwoFactorChallenge.user_id == user.id,
+            TwoFactorChallenge.purpose == LOGIN_2FA_PURPOSE,
             TwoFactorChallenge.consumed.is_(False),
         )
         .values(consumed=True)
@@ -126,6 +142,7 @@ async def login(
         id=challenge_id,
         user_id=user.id,
         code_hash=hash_otp(challenge_id, code),
+        purpose=LOGIN_2FA_PURPOSE,
         expires_at=now + timedelta(seconds=settings.two_factor_ttl_seconds),
         ip_address=_client_ip(request),
         user_agent=request.headers.get("user-agent"),
@@ -138,7 +155,10 @@ async def login(
     except Exception as exc:
         await db.rollback()
         logger.exception("Не удалось отправить 2FA-код")
-        raise HTTPException(503, "Не удалось отправить код подтверждения. Проверьте SMTP-настройки.") from exc
+        raise HTTPException(
+            503,
+            "Не удалось отправить код подтверждения. Проверьте SMTP-настройки.",
+        ) from exc
 
     await db.commit()
     return LoginOut(
@@ -157,7 +177,10 @@ async def verify_two_factor(
 ):
     challenge = await db.scalar(
         select(TwoFactorChallenge)
-        .where(TwoFactorChallenge.id == data.challenge_id)
+        .where(
+            TwoFactorChallenge.id == data.challenge_id,
+            TwoFactorChallenge.purpose == LOGIN_2FA_PURPOSE,
+        )
         .with_for_update()
     )
     if not challenge:
@@ -196,6 +219,152 @@ async def verify_two_factor(
     await db.commit()
     set_refresh_cookie(response, refresh)
     return TokenOut(access_token=create_access_token(user.id, user.role.value))
+
+
+@router.post("/forgot-password", response_model=MessageOut)
+async def forgot_password(
+    data: ForgotPasswordIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Отправляет одноразовый код сброса, не раскрывая существование email."""
+    generic = MessageOut(
+        detail="Если такая активная учётная запись существует, код восстановления отправлен на email."
+    )
+
+    user = await db.scalar(
+        select(User).where(
+            User.email == data.email.lower(),
+            User.is_active.is_(True),
+        )
+    )
+    if not user:
+        return generic
+
+    now = datetime.now(timezone.utc)
+
+    # Не отправляем письма чаще одного раза в минуту.
+    recent = await db.scalar(
+        select(TwoFactorChallenge)
+        .where(
+            TwoFactorChallenge.user_id == user.id,
+            TwoFactorChallenge.purpose == PASSWORD_RESET_PURPOSE,
+            TwoFactorChallenge.consumed.is_(False),
+            TwoFactorChallenge.created_at > now - timedelta(seconds=60),
+        )
+        .order_by(TwoFactorChallenge.created_at.desc())
+    )
+    if recent:
+        return generic
+
+    await db.execute(
+        update(TwoFactorChallenge)
+        .where(
+            TwoFactorChallenge.user_id == user.id,
+            TwoFactorChallenge.purpose == PASSWORD_RESET_PURPOSE,
+            TwoFactorChallenge.consumed.is_(False),
+        )
+        .values(consumed=True)
+    )
+
+    challenge_id = uuid.uuid4()
+    code = generate_otp()
+    challenge = TwoFactorChallenge(
+        id=challenge_id,
+        user_id=user.id,
+        code_hash=hash_otp(challenge_id, code),
+        purpose=PASSWORD_RESET_PURPOSE,
+        expires_at=now + timedelta(seconds=settings.password_reset_ttl_seconds),
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.add(challenge)
+    await db.flush()
+
+    try:
+        await send_password_reset_code(user.email, code)
+    except Exception:
+        # Снаружи не раскрываем, существует ли указанный email. Ошибка остаётся
+        # в серверном журнале, а незавершённая транзакция откатывается.
+        await db.rollback()
+        logger.exception("Не удалось отправить код восстановления пароля")
+        return generic
+
+    await db.commit()
+    return generic
+
+
+@router.post("/reset-password", response_model=MessageOut)
+async def reset_password(
+    data: ResetPasswordIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    user = await db.scalar(
+        select(User).where(
+            User.email == data.email.lower(),
+            User.is_active.is_(True),
+        )
+    )
+    invalid_message = "Неверный или истёкший код восстановления"
+    if not user:
+        raise HTTPException(400, invalid_message)
+
+    challenge = await db.scalar(
+        select(TwoFactorChallenge)
+        .where(
+            TwoFactorChallenge.user_id == user.id,
+            TwoFactorChallenge.purpose == PASSWORD_RESET_PURPOSE,
+            TwoFactorChallenge.consumed.is_(False),
+        )
+        .order_by(TwoFactorChallenge.created_at.desc())
+        .with_for_update()
+    )
+    if not challenge:
+        raise HTTPException(400, invalid_message)
+
+    now = datetime.now(timezone.utc)
+    if challenge.expires_at <= now:
+        challenge.consumed = True
+        await db.commit()
+        raise HTTPException(400, invalid_message)
+
+    if challenge.attempts >= settings.two_factor_max_attempts:
+        challenge.consumed = True
+        await db.commit()
+        raise HTTPException(400, "Превышено количество попыток. Запросите новый код.")
+
+    if not verify_otp(challenge.id, data.code, challenge.code_hash):
+        challenge.attempts += 1
+        if challenge.attempts >= settings.two_factor_max_attempts:
+            challenge.consumed = True
+        await db.commit()
+        raise HTTPException(400, invalid_message)
+
+    user.password_hash = hash_password(data.new_password)
+
+    # После смены пароля аннулируются все одноразовые challenge пользователя
+    # и все активные refresh-токены на его устройствах.
+    await db.execute(
+        update(TwoFactorChallenge)
+        .where(
+            TwoFactorChallenge.user_id == user.id,
+            TwoFactorChallenge.consumed.is_(False),
+        )
+        .values(consumed=True)
+    )
+    await db.execute(
+        update(RefreshToken)
+        .where(
+            RefreshToken.user_id == user.id,
+            RefreshToken.revoked.is_(False),
+        )
+        .values(revoked=True)
+    )
+
+    _set_audit_actor(request, user)
+    await db.commit()
+    return MessageOut(detail="Пароль успешно изменён. Теперь можно войти с новым паролем.")
 
 
 @router.post("/refresh", response_model=TokenOut)

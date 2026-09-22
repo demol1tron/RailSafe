@@ -14,9 +14,7 @@ export default [
       globals: globals.browser,
       parserOptions: {
         ecmaVersion: 'latest',
-        ecmaFeatures: {
-          jsx: true,
-        },
+        ecmaFeatures: {jsx: true},
         sourceType: 'module',
       },
     },
@@ -27,10 +25,7 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': [
-        'warn',
-        {allowConstantExport: true},
-      ],
+      'react-refresh/only-export-components': ['warn', {allowConstantExport: true}],
       'no-unused-vars': 'off',
     },
   },

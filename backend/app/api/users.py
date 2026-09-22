@@ -137,6 +137,20 @@ async def set_user_status(
     return user
 
 
+@router.patch("/{user_id}/deactivate", response_model=UserOut, deprecated=True)
+async def deactivate(
+    user_id: UUID,
+    current_admin: User = Depends(admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Обратная совместимость со старым frontend. Новый UI использует /status."""
+    return await set_user_status(
+        user_id,
+        UserStatusUpdate(is_active=False),
+        current_admin,
+        db,
+    )
+
 
 @router.delete("/{user_id}", status_code=204)
 async def delete_user(
