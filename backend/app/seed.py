@@ -8,11 +8,11 @@ from app.core.security import hash_password
 from app.models.entities import IncidentCategory, RailwayStation, User, UserRole
 
 STATIONS = [
-    {"name": "Новосибирск-Главный", "code": "850609", "latitude": 55.035934448242, "longitude": 82.8947243, "region": "Новосибирская область"},
-    {"name": "Новосибирск-Западный", "code": "851207", "latitude": 54.995288848877, "longitude": 82.8545317, "region": "Новосибирская область"},
-    {"name": "Новосибирск-Восточный", "code": "851508", "latitude": 55.067806243896, "longitude": 82.9743002, "region": "Новосибирская область"},
-    {"name": "Новосибирск-Южный", "code": "850505", "latitude": 55.004493713379, "longitude": 82.9522049, "region": "Новосибирская область"},
-    {"name": "Инская", "code": "850007", "latitude": 54.964359283447, "longitude": 83.1196256, "region": "Новосибирская область"},
+    {"name": "Новосибирск-Главный", "code": "850609", "latitude": 55.035063, "longitude": 82.896614, "region": "Новосибирская область"},
+    {"name": "Новосибирск-Западный", "code": "851207", "latitude": 55.011681, "longitude": 82.846558, "region": "Новосибирская область"},
+    {"name": "Новосибирск-Восточный", "code": "851508", "latitude": 55.067944, "longitude": 82.974144, "region": "Новосибирская область"},
+    {"name": "Новосибирск-Южный", "code": "850505", "latitude": 55.004395, "longitude": 82.951868, "region": "Новосибирская область"},
+    {"name": "Инская", "code": "850007", "latitude": 54.964359, "longitude": 83.119626, "region": "Новосибирская область"},
 ]
 
 CATEGORIES = [
